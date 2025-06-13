@@ -99,6 +99,41 @@ class RPSMessage(ESP2Message):
     def __repr__(self):
         return "<%s from %s, db0 = %s, status = 0x%02x (T%s, %s, %d repetitions)>"%(type(self).__name__, b2s(self.address), b2s(self.data), self.status, self.t21, self.nu, self.rp_count)
 
+class EltakoRPSMessage(ESP2Message):
+    """An incoming or outgoing RPS (1 byte, switch) telegram"""
+    org = 0x05
+
+    def __init__(self, address, status, data, outgoing=False):
+        self.address = address
+        self.status = status
+        self.data = data
+        self.outgoing = outgoing
+
+    body = property(lambda self: bytes((0x8B, self.org, *self.data, 0, 0, 0, *self.address, self.status)))
+
+    @classmethod
+    def parse(cls, data):
+        esp2message = super().parse(data)
+        try:
+            outgoing = {(3 << 5) + 11: True, (0 << 5) + 11: False}[esp2message.body[0]]
+        except KeyError:
+            raise ParseError("Code is neither RRT nor TRT")
+        if esp2message.body[1] != cls.org:
+            raise ParseError("Not an RPS message")
+        data = esp2message.body[2:3]
+        if any(esp2message.body[3:6]):
+            raise ParseError("RPS message should not carry db1..3")
+        address = esp2message.body[6:10]
+        status = esp2message.body[10]
+        return cls(address, status, data, outgoing)
+
+    t21 = property(lambda self: 2 if (self.status >> 5) & 1 else 1)
+    nu = property(lambda self: "N" if (self.status >> 4) & 1 else "U")
+    rp_count = property(lambda self: self.status & 0xf)
+
+    def __repr__(self):
+        return "<%s from %s, db0 = %s, status = 0x%02x (T%s, %s, %d repetitions)>"%(type(self).__name__, b2s(self.address), b2s(self.data), self.status, self.t21, self.nu, self.rp_count)
+
 class _1BSMessage(ESP2Message):
     org = 0x06
 
@@ -242,10 +277,11 @@ class EltakoWrappedRPS(ESP2Message):
 
     org = 0x05
 
-    def __init__(self, address, status, data):
+    def __init__(self, address, status, data, is_request=False):
         self.address = address
         self.status = status
         self.data = data
+        self.is_request = is_request
 
     @classmethod
     def parse(cls, data):
@@ -256,7 +292,7 @@ class EltakoWrappedRPS(ESP2Message):
             raise ParseError("RPS message should not carry db1..3")
         return cls(address=eltakomessage.payload[4:8], status=eltakomessage.address, data=eltakomessage.payload[0:1])
 
-    body = property(lambda self: EltakoMessage(org=self.org, address=self.status, payload=self.data + bytes((0, 0, 0)) + self.address, is_request=False).body)
+    body = property(lambda self: EltakoMessage(org=self.org, address=self.status, payload=self.data + bytes((0, 0, 0)) + self.address, self.is_request).body)
 
     def __repr__(self):
         return "<%s from %s, status %02x, data %s>" % (type(self).__name__, b2s(self.address), self.status, b2s(self.data))
