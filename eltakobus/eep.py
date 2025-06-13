@@ -2,7 +2,7 @@ from enum import Enum
 
 from eltakobus.util import DefaultEnum
 from .error import NotImplementedError, WrongOrgError
-from .message import RPSMessage, Regular1BSMessage, Regular4BSMessage
+from .message import EltakoRPSMessage, RPSMessage, Regular1BSMessage, Regular4BSMessage
 import re
 
 class EEP:
@@ -620,7 +620,7 @@ class _EltakoSwitchingCommand(EEP):
         
         status = 0x30
         
-        return RPSMessage(address, status, data, True)
+        return EltakoWrappedRPS(address, status, data, True)
 
     @property
     def state(self):
