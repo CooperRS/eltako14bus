@@ -242,10 +242,11 @@ class EltakoWrappedRPS(ESP2Message):
 
     org = 0x05
 
-    def __init__(self, address, status, data):
+    def __init__(self, address, status, data, is_request=False):
         self.address = address
         self.status = status
         self.data = data
+        self.is_request = is_request
 
     @classmethod
     def parse(cls, data):
@@ -256,7 +257,7 @@ class EltakoWrappedRPS(ESP2Message):
             raise ParseError("RPS message should not carry db1..3")
         return cls(address=eltakomessage.payload[4:8], status=eltakomessage.address, data=eltakomessage.payload[0:1])
 
-    body = property(lambda self: EltakoMessage(org=self.org, address=self.status, payload=self.data + bytes((0, 0, 0)) + self.address, is_request=False).body)
+    body = property(lambda self: EltakoMessage(org=self.org, address=self.status, payload=self.data + bytes((0, 0, 0)) + self.address, self.is_request).body)
 
     def __repr__(self):
         return "<%s from %s, status %02x, data %s>" % (type(self).__name__, b2s(self.address), self.status, b2s(self.data))
