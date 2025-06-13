@@ -109,9 +109,7 @@ class EltakoRPSMessage(ESP2Message):
         self.data = data
         self.outgoing = outgoing
 
-    h_seq = property(lambda self: 4)
-
-    body = property(lambda self: bytes(((self.h_seq << 5) + 11, self.org, *self.data, 0, 0, 0, *self.address, self.status)))
+    body = property(lambda self: bytes((0x8B self.org, *self.data, 0, 0, 0, *self.address, self.status)))
 
     @classmethod
     def parse(cls, data):
