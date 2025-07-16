@@ -12,7 +12,7 @@ from eltakobus import locking
 
 from .bus import BusInterface
 from .error import ParseError, TimeoutError
-from .message import ESP2Message, EltakoMemoryRequest, EltakoMemoryResponse, prettify, EltakoTimeout, EltakoDiscoveryRequest, EltakoDiscoveryReply
+from .message import EltakoPoll, ESP2Message, EltakoMemoryRequest, EltakoMemoryResponse, prettify, EltakoTimeout, EltakoDiscoveryRequest, EltakoDiscoveryReply
 from .util import AddressExpression
 
 class RS485SerialInterfaceV2(BusInterface, threading.Thread):
@@ -237,10 +237,11 @@ class RS485SerialInterfaceV2(BusInterface, threading.Thread):
                     # process received messages from bus
                     while len(self._buffer) >= 14:
                         try:
-                            bytes = self._buffer[:14]
-                            self.log.debug("Received bytes: %s", bytes)
-                            parsed_msg = prettify( ESP2Message.parse(bytes) )
-                            self.log.debug("Received Message: %s", parsed_msg)
+                            data = bytes(self._buffer[:14])
+                            parsed_msg = prettify( ESP2Message.parse(data) )
+                            if not isinstance(parsed_msg, EltakoPoll):
+                                self.log.debug("Received Message: %s", parsed_msg)
+                                self.log.debug("Received bytes: %s", data)
                         except ParseError:
                             self._buffer = self._buffer[1:]
                         else:
